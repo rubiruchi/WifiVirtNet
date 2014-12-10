@@ -61,8 +61,8 @@ if __name__ == '__main__':
 
     radios = int(arguments.radios)
     
-    if radios < 2:
-        raise NumRadiosException("Número de radios deve ser maior que 1!")
+    if radios < 2 or radios > 99:
+        raise NumRadiosException("Número de radios deve ser maior que 1 e menor que 100!")
 
     # Tell mininet to print useful information
     setLogLevel('info')
@@ -78,18 +78,25 @@ if __name__ == '__main__':
     c0 = net.controllers[0]
 
     try:
-        #carrega o módulo de criação de interfaces wi-fi mac80211_hwsim encontra o pid dos hosts
-        c0.cmdPrint('modprobe mac80211_hwsim')
-        pid1 = pid('h1')
-        pid2 = pid('h2')
+        #carrega o módulo de criação de interfaces wi-fi mac80211_hwsim com n interfaces
+        if radios == 2:
+            c0.cmdPrint('modprobe mac80211_hwsim')
+        else:
+            mod = 'modprobe mac80211_hwsim radios='+str(radios)
+            print mod
+            c0.cmdPrint(mod)
 
         #Trasfere as interfaces para cada host
-        iw1 = 'iw phy phy0 set netns '+str(pid1)
-        iw2 = 'iw phy phy1 set netns '+str(pid2)
-        c0.cmdPrint(iw1)
-        c0.cmdPrint(iw2)
+        for x in irange(1, radios):
+            pidh = pid('h%s' % x)
+            print 'pid = %s'  % pidh
 
-        #Cria interfaces 802.11s vinculadas as interfaces wi-fi
+            #Trasfere as interfaces para cada host
+            iw = 'iw phy phy%s set netns ' % str(x-1)
+            iw = iw+str(pidh)
+            c0.cmdPrint(iw)
+
+        """#Cria interfaces 802.11s vinculadas as interfaces wi-fi
         hosts[0].cmdPrint('iw dev wlan0 interface add mesh0 type mp mesh_id teste')
         hosts[1].cmdPrint('iw dev wlan1 interface add mesh0 type mp mesh_id teste')
 
@@ -103,6 +110,7 @@ if __name__ == '__main__':
         hosts[0].cmdPrint('ifconfig -a')
         hosts[1].cmdPrint('ifconfig -a')
         c0.cmdPrint('ifconfig -a')
+"""
     except Exception,e:
         #c0.cmdPrint('modprobe -r mac80211_hwsim')
         net.stop()
@@ -127,7 +135,7 @@ if __name__ == '__main__':
         try:
             #Linha de comnado mininet
             CLI(net)
-            #c0.cmdPrint('modprobe -r mac80211_hwsim')
+            c0.cmdPrint('modprobe -r mac80211_hwsim')
             net.stop()
         except Exception,e:
             #c0.cmdPrint('modprobe -r mac80211_hwsim')
